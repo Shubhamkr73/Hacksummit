@@ -51,3 +51,4 @@ Test 2 (Our Video)
 ## Conclusion
 
 This project successfully detects human trespassing and sends alerts, making it useful for security applications. It balances efficiency with accuracy by combining motion detection and deep learning.
+

@@ -1,209 +1,163 @@
-import tkinter as tk
-from tkinter import messagebox, ttk
-from datetime import datetime
-import threading
-import time
+from kivy.app import App
+from kivy.uix.boxlayout import BoxLayout
+from kivy.uix.gridlayout import GridLayout
+from kivy.uix.label import Label
+from kivy.uix.textinput import TextInput
+from kivy.uix.button import Button
+from kivy.uix.scrollview import ScrollView
+from kivy.uix.popup import Popup
+from kivy.graphics import Color, Rectangle, RoundedRectangle
+from json import dump
 
-class SimpleTrespassingApp:
-    def __init__(self):
-        # Create the main window manually
-        self.root = tk.Tk()
-        self.root.title("Trespassing Detection")
-        self.root.geometry("800x600")
-        self.setup_ui()
+
+class DynamicForm(BoxLayout):
+    def __init__(self, **kwargs):
+        super().__init__(orientation="vertical", padding=20, spacing=15, **kwargs)
+
+        with self.canvas.before:
+            Color(0.12, 0.12, 0.12, 1) 
+            self.rect = Rectangle(size=self.size, pos=self.pos)
+        self.bind(size=self.update_rect, pos=self.update_rect)
+
+        self.control_layout = BoxLayout(size_hint_y=None, height=60, spacing=10)
         
-    def setup_ui(self):
-        # Simple header
-        header = tk.Frame(self.root, bg="#1e3a8a", padx=10, pady=10)
-        header.pack(fill="x")
-        
-        tk.Label(
-            header, 
-            text="Trespassing Detection System", 
-            font=("Arial", 18, "bold"),
-            fg="white",
-            bg="#1e3a8a"
-        ).pack()
-        
-        # Main content - split into two panels
-        content = tk.PanedWindow(self.root, orient=tk.HORIZONTAL)
-        content.pack(fill="both", expand=True, padx=10, pady=10)
-        
-        # Left panel - Camera setup
-        left_frame = tk.LabelFrame(content, text="Camera Setup", padx=10, pady=10)
-        content.add(left_frame)
-        
-        # Number of cameras
-        camera_frame = tk.Frame(left_frame)
-        camera_frame.pack(fill="x", pady=5)
-        
-        tk.Label(camera_frame, text="Number of cameras:").pack(side="left")
-        self.num_cameras = tk.Spinbox(camera_frame, from_=1, to=10, width=5)
-        self.num_cameras.pack(side="left", padx=5)
-        
-        tk.Button(
-            camera_frame, 
-            text="Update", 
-            bg="#2563eb", 
-            fg="white",
-            command=self.update_cameras
-        ).pack(side="left", padx=5)
-        
-        # Camera list container
-        self.camera_container = tk.Frame(left_frame)
-        self.camera_container.pack(fill="both", expand=True, pady=10)
-        
-        # Save button
-        tk.Button(
-            left_frame, 
-            text="Save Configuration", 
-            bg="#10b981", 
-            fg="white",
-            padx=10,
-            pady=5,
-            command=self.save_config
-        ).pack(pady=10)
-        
-        # Right panel - Monitoring
-        right_frame = tk.LabelFrame(content, text="Monitoring", padx=10, pady=10)
-        content.add(right_frame)
-        
-        # Control buttons
-        control_frame = tk.Frame(right_frame)
-        control_frame.pack(fill="x", pady=5)
-        
-        self.start_button = tk.Button(
-            control_frame, 
-            text="Start Monitoring", 
-            bg="#10b981", 
-            fg="white",
-            padx=10,
-            pady=5,
-            command=self.toggle_monitoring
+        self.control_layout.add_widget(Label(text="Number of Items:", font_size=22, color=(1, 1, 1, 1)))
+
+        self.num_input = TextInput(
+            text="1", multiline=False, size_hint_x=0.2, font_size=22,
+            background_color=(0.2, 0.6, 1, 1), foreground_color=(1, 1, 1, 1),
+            padding=[10, 10]
         )
-        self.start_button.pack(side="left", padx=5)
-        
-        tk.Button(
-            control_frame, 
-            text="Test Alert", 
-            bg="#f59e0b", 
-            fg="white",
-            padx=10,
-            pady=5,
-            command=self.test_alert
-        ).pack(side="left", padx=5)
-        
-        # Status
-        status_frame = tk.Frame(right_frame)
-        status_frame.pack(fill="x", pady=10)
-        
-        tk.Label(status_frame, text="Status:").pack(side="left")
-        self.status_var = tk.StringVar(value="Not Monitoring")
-        tk.Label(status_frame, textvariable=self.status_var, fg="red").pack(side="left", padx=5)
-        
-        # Log area
-        tk.Label(right_frame, text="System Logs:").pack(anchor="w")
-        self.log_area = tk.Text(right_frame, height=15, width=40)
-        self.log_area.pack(fill="both", expand=True)
-        
-        # Initialize
-        self.is_monitoring = False
-        self.cameras = []
-        self.camera_entries = []
-        self.update_cameras()
-        self.add_log("System initialized")
-    
-    def update_cameras(self):
-        # Clear existing entries
-        for widget in self.camera_container.winfo_children():
-            widget.destroy()
-        
-        try:
-            num = int(self.num_cameras.get())
-        except:
-            num = 1
-            
-        self.camera_entries = []
-        
-        # Create camera entries
-        for i in range(num):
-            frame = tk.Frame(self.camera_container)
-            frame.pack(fill="x", pady=2)
-            
-            tk.Label(frame, text=f"Camera {i+1}:").pack(side="left")
-            name_entry = tk.Entry(frame, width=15)
-            name_entry.pack(side="left", padx=5)
-            name_entry.insert(0, f"Camera {i+1}")
-            
-            tk.Label(frame, text="URL:").pack(side="left", padx=5)
-            url_entry = tk.Entry(frame, width=30)
-            url_entry.pack(side="left")
-            
-            self.camera_entries.append((name_entry, url_entry))
-        
-        self.add_log(f"Updated to {num} cameras")
-    
-    def save_config(self):
-        self.cameras = []
-        for name_entry, url_entry in self.camera_entries:
-            name = name_entry.get()
-            url = url_entry.get()
-            if name and url:
-                self.cameras.append((name, url))
-        
-        count = len(self.cameras)
-        self.add_log(f"Saved {count} camera configurations")
-        messagebox.showinfo("Saved", f"{count} cameras configured")
-    
-    def toggle_monitoring(self):
-        if not self.is_monitoring:
-            if not self.cameras:
-                messagebox.showwarning("Warning", "No cameras configured")
-                return
-                
-            self.is_monitoring = True
-            self.start_button.config(text="Stop Monitoring", bg="#ef4444")
-            self.status_var.set("Monitoring Active")
-            self.add_log("Monitoring started")
-            
-            # Start monitoring thread
-            threading.Thread(target=self.run_monitoring, daemon=True).start()
-        else:
-            self.is_monitoring = False
-            self.start_button.config(text="Start Monitoring", bg="#10b981")
-            self.status_var.set("Not Monitoring")
-            self.add_log("Monitoring stopped")
-    
-    def run_monitoring(self):
-        while self.is_monitoring:
-            # Simulate detection (in real app, this would check camera feeds)
-            time.sleep(5)
-            if self.is_monitoring and datetime.now().second % 20 == 0:
-                self.add_log("⚠️ ALERT: Trespassing detected!", is_alert=True)
-    
-    def test_alert(self):
-        self.add_log("⚠️ TEST ALERT: This is a test alert", is_alert=True)
-        messagebox.showinfo("Test", "Test alert generated")
-    
-    def add_log(self, message, is_alert=False):
-        timestamp = datetime.now().strftime("%H:%M:%S")
-        log_entry = f"[{timestamp}] {message}\n"
-        
-        self.log_area.configure(state="normal")
-        
-        if is_alert:
-            self.log_area.insert("end", log_entry, "alert")
-            self.log_area.tag_configure("alert", foreground="red", font=("Arial", 10, "bold"))
-        else:
-            self.log_area.insert("end", log_entry)
-            
-        self.log_area.configure(state="disabled")
-        self.log_area.see("end")
-    
-    def run(self):
-        self.root.mainloop()
+        self.num_input.bind(text=self.update_fields)
+        self.control_layout.add_widget(self.num_input)
 
-# Create and run the application
+        self.add_widget(self.control_layout)
+
+        self.scroll_view = ScrollView(size_hint=(1, 1))
+        self.field_layout = GridLayout(cols=1, size_hint_y=None, spacing=15, padding=10)
+        self.field_layout.bind(minimum_height=self.field_layout.setter('height'))
+        self.scroll_view.add_widget(self.field_layout)
+
+        self.add_widget(self.scroll_view)
+
+        self.submit_btn = Button(
+            text="Save Data",
+            size_hint_y=None, height=60,
+            background_color=(0, 0.8, 0.6, 1), 
+            color=(1, 1, 1, 1),  
+            font_size=24,
+            bold=True
+        )
+        self.submit_btn.bind(on_press=self.save_data)
+        self.add_widget(self.submit_btn)
+
+        self.fields = []
+        self.update_fields()
+
+    def update_fields(self, *args):
+        """Dynamically updates the form fields."""
+        try:
+            num_items = max(1, int(self.num_input.text))
+        except ValueError:
+            num_items = 1  
+
+        self.field_layout.clear_widgets()
+        self.fields = []
+
+        for i in range(num_items):
+            item_box = BoxLayout(orientation="vertical", size_hint_y=None, height=220, padding=15, spacing=10)
+
+            with item_box.canvas.before:
+                Color(0.15, 0.15, 0.15, 1)  
+                item_box.rect = RoundedRectangle(size=item_box.size, pos=item_box.pos, radius=[10])
+            item_box.bind(size=self.update_rect, pos=self.update_rect)
+
+            title = Label(text=f"Item {i+1}", font_size=20, bold=True, color=(1, 1, 1, 1), size_hint_y=None, height=40)
+
+            name = TextInput(
+                hint_text=f"Enter Name {i+1}", multiline=False, font_size=18,
+                background_color=(0.3, 0.3, 0.3, 1), foreground_color=(1, 1, 1, 1),
+                padding=[10, 10]
+            )
+            desc = TextInput(
+                hint_text=f"Enter Description {i+1}", multiline=True, font_size=18,
+                background_color=(0.3, 0.3, 0.3, 1), foreground_color=(1, 1, 1, 1),
+                padding=[10, 10]
+            )
+            link = TextInput(
+                hint_text=f"Enter Link {i+1}", multiline=False, font_size=18,
+                background_color=(0.3, 0.3, 0.3, 1), foreground_color=(1, 1, 1, 1),
+                padding=[10, 10]
+            )
+
+            name.bind(text=self.reset_background)
+            desc.bind(text=self.reset_background)
+            link.bind(text=self.reset_background)
+
+            item_box.add_widget(title)
+            item_box.add_widget(name)
+            item_box.add_widget(desc)
+            item_box.add_widget(link)
+
+            self.fields.append({"name": name, "desc": desc, "link": link})
+            self.field_layout.add_widget(item_box)
+
+    def reset_background(self, instance, value):
+        """Resets the background color when the user starts typing."""
+        instance.background_color = (0.3, 0.3, 0.3, 1)
+
+    def show_warning_popup(self, message):
+        """Displays a warning popup."""
+        popup_layout = BoxLayout(orientation="vertical", padding=20, spacing=10)
+        popup_label = Label(text=message, font_size=20, color=(1, 0, 0, 1)) 
+        close_btn = Button(text="Close", size_hint_y=None, height=50, font_size=18, background_color=(1, 0, 0, 1))
+
+        popup_layout.add_widget(popup_label)
+        popup_layout.add_widget(close_btn)
+
+        popup = Popup(title="Warning", content=popup_layout, size_hint=(None, None), size=(400, 250))
+        close_btn.bind(on_press=popup.dismiss)
+        popup.open()
+
+    def save_data(self, instance):
+        """Saves entered data to a JSON file after validation."""
+        data = []
+        is_valid = True
+
+        for f in self.fields:
+            name_text = f["name"].text.strip()
+            desc_text = f["desc"].text.strip()
+            link_text = f["link"].text.strip()
+
+            if not name_text or not desc_text or not link_text:
+                is_valid = False
+
+                if not name_text:
+                    f["name"].background_color = (1, 0.2, 0.2, 1)  
+                if not desc_text:
+                    f["desc"].background_color = (1, 0.2, 0.2, 1)
+                if not link_text:
+                    f["link"].background_color = (1, 0.2, 0.2, 1)
+
+            data.append({"name": name_text, "desc": desc_text, "link": link_text})
+
+        if is_valid:
+            with open('data.json', 'w') as file:
+                dump(data, file)
+            self.show_warning_popup("Data saved successfully!")
+        else:
+            self.show_warning_popup("Please fill in all fields!")
+
+    def update_rect(self, *args):
+        """Updates background elements when size changes."""
+        self.rect.size = self.size
+        self.rect.pos = self.pos
+
+
+class DynamicFormApp(App):
+    def build(self):
+        return DynamicForm()
+
+
 if __name__ == "__main__":
-    app = SimpleTrespassingApp()
-    app.run()
+    DynamicFormApp().run()
