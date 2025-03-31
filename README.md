@@ -35,11 +35,7 @@ pip install -r requirements.txt
 4. **Email Alerts**:
    - If a human is detected and the predefined waiting period, which prevents multiple consecutive alerts in a short time, has elapsed, an email is sent.
 
-Test 1 (Video Provided)
-![alt text](Test1.jpg)
 
-Test 2 (Our Video)
-![alt text](Test2.jpg)
 
 ## Key Features
 
