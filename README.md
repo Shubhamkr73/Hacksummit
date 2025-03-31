@@ -13,8 +13,10 @@ This project implements a real-time trespassing detection system using OpenCV, Y
 ## Intallation
 
 ```
-python -m venv sbi-hack
-sbi-hack\Scripts\activate
+python -m venv .hacksummit
+.hacksummit\Scripts\activate
+git clone https://github.com/Shubhamkr73/Hacksummit.git
+cd .\Hacksumit\
 pip install -r requirements.txt
 ```
 
